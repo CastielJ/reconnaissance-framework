@@ -1,4 +1,4 @@
-# OSINT Framework (Bash)
+# OSINT Framework (v.1.0.0)
 
 An automated OSINT (Open Source Intelligence) framework written in Bash.
 This script helps gather reconnaissance data on a target domain using
