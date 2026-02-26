@@ -33,11 +33,11 @@ This script relies on external tools, including:
 ```bash
 git clone https://github.com/USERNAME/osint-framework.git
 cd osint-framework
-chmod +x osint-framework.sh
+chmod +x script.sh
 ```
 ## Usage
 ```bash
-./osint-framework.sh
+./script.sh
 ```
 ##You will be prompted to:
 
