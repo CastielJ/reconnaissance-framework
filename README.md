@@ -31,7 +31,7 @@ This script relies on external tools, including:
 ## Installation
 
 ```bash
-git clone https://github.com/USERNAME/osint-framework.git
+git clone https://github.com/CastielJ/osint-framework.git
 cd osint-framework
 chmod +x script.sh
 ```
