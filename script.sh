@@ -4,7 +4,7 @@ set -euo pipefail
 
 # Metadata
 
-VERSION="1.2.2"
+VERSION="1.2.1"
 AUTHOR="CastielJ"
 
 # Colors
@@ -156,6 +156,20 @@ run_ffuf() {
     echo -e "${YELLOW}[!] ffuf generates high traffic. Ensure authorization.${NC}"
 }
 
+run_alive() {
+        echo -e "${BLUE}[*] Checking alive web services (httpx)...${NC}"
+
+    httpx -l "$SUB_DIR/all.txt" \
+          -silent \
+          -follow-redirects \
+          -timeout 5 \
+          -retries 2 \
+          -threads 50 \
+          -title \
+          -status-code \
+          -tech-detect \
+          -o "$ALIVE_DIR/alive.txt"
+}
 
 # Execution Logic
 
@@ -181,20 +195,6 @@ case "$MODE" in
         ;;
 esac
 
-run_alive() {
-        echo -e "${BLUE}[*] Checking alive web services (httpx)...${NC}"
-
-    httpx -l "$SUB_DIR/all.txt" \
-          -silent \
-          -follow-redirects \
-          -timeout 5 \
-          -retries 2 \
-          -threads 50 \
-          -title \
-          -status-code \
-          -tech-detect \
-          -o "$ALIVE_DIR/alive.txt"
-}
 
 # Done
 
