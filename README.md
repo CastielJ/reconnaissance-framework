@@ -1,4 +1,4 @@
-# OSINT Framework (v.1.1.0)
+# OSINT Framework (v.1.1.1)
 
 An automated OSINT (Open Source Intelligence) framework written in Bash.
 This script helps gather reconnaissance data on a target domain using
@@ -25,7 +25,7 @@ This script relies on external tools, including:
 - `assetfinder`
 - `amass`
 - `httpx`
-- `dnslister`
+- `dnsx`
 - `katana`
 - `ffuf`
 - `nuclei`
