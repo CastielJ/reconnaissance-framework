@@ -4,7 +4,7 @@ set -euo pipefail
 
 # Metadata
 
-VERSION="1.1.0"
+VERSION="1.1.1"
 AUTHOR="CastielJ"
 
 # Colors
@@ -41,7 +41,7 @@ TOOLS=(
     httpx
     katana
     nuclei
-    dnslister
+    dnsx
     ffuf
 )
 
@@ -93,8 +93,11 @@ run_subdomains() {
 }
 
 run_dns() {
-    echo -e "${BLUE}[*] Running DNS enumeration (dnslister)...${NC}"
-    dnslister -d "$TARGET" -o "$DNS_DIR/dnslister.txt"
+        echo -e "${BLUE}[*] Running DNS resolution (dnsx)...${NC}"
+
+    dnsx -l "$SUB_DIR/all.txt" \
+         -a -resp \
+         -o "$DNS_DIR/dnsx.txt"
 }
 
 run_alive() {
