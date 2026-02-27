@@ -1,74 +1,191 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 set -euo pipefail
-# Colors (Work on most modern terminals)
-RED='\033[1;31m'
-GREEN='\033[1;32m'
-BLUE='\033[1;34m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
 
-echo -e "${BLUE}==========================================${NC}"
-echo -e "${GREEN}     OSINT-FRAMEWORK (By CastielJ)       ${NC}"
-echo -e "${BLUE}==========================================${NC}"
+# Metadata
 
-# 1. The target input
-read -p "Write the target Domain or URL: " INPUT_TARGET
+VERSION="1.1.0"
+AUTHOR="CastielJ"
 
-# Getting rid of http(s):// and anything else that we don't need
-TARGET=$(echo "$INPUT_TARGET" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
+# Colors
+
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[1;33m"
+BLUE="\033[0;34m"
+CYAN="\033[0;36m"
+NC="\033[0m"
+
+# Banner
+
+echo -e "${CYAN}"
+echo "====================================="
+echo " OSINT Framework v$VERSION"
+echo " Author: $AUTHOR"
+echo "====================================="
+echo -e "${NC}"
+
+# Dependency Check
+
+check_tool() {
+    command -v "$1" >/dev/null 2>&1 || {
+        echo -e "${RED}[!] Missing dependency: $1${NC}"
+        exit 1
+    }
+}
+
+TOOLS=(
+    subfinder
+    assetfinder
+    amass
+    httpx
+    katana
+    nuclei
+    dnslister
+    ffuf
+)
+
+for tool in "${TOOLS[@]}"; do
+    check_tool "$tool"
+done
+
+
+# User Input
+
+read -rp "Enter target domain (example.com): " TARGET
 
 if [[ -z "$TARGET" ]]; then
-    echo -e "${RED}Error. Write the target Domain or URL${NC}"
+    echo -e "${RED}[!] No target provided${NC}"
     exit 1
 fi
 
-echo -e "${YELLOW}[i] Working with the clear domain: $TARGET${NC}"
+echo
+echo "Choose scan mode:"
+echo "1) Basic"
+echo "2) Subdomains"
+echo "3) Deep (Recommended)"
+read -rp "Select option [1-3]: " MODE
 
-REPORT_DIR="reports/$TARGET"
-mkdir -p "$REPORT_DIR"
 
-# Choose wisely
-echo -e "\n1. Fast  2. Deep  3. Maximal scanning"
-read -p "Your Choise: " MODE
+# Output Structure
 
-# --- Base ---
-run_basic() {
-    echo -e "${BLUE}[*] Collecting DNS and Technologies...${NC}"
-    dig "$TARGET" ANY +short > "$REPORT_DIR/dns.txt"
-    whatweb "$TARGET" > "$REPORT_DIR/whatweb.txt"
-    # Nmap Gets without https://, so it's a clear domain now
-    nmap -F "$TARGET" > "$REPORT_DIR/nmap.txt"
+BASE_DIR="$TARGET"
+SUB_DIR="$BASE_DIR/subdomains"
+DNS_DIR="$BASE_DIR/dns"
+ALIVE_DIR="$BASE_DIR/alive"
+FFUF_DIR="$BASE_DIR/ffuf"
+KATANA_DIR="$BASE_DIR/katana"
+NUCLEI_DIR="$BASE_DIR/nuclei"
+
+mkdir -p "$SUB_DIR" "$DNS_DIR" "$ALIVE_DIR" "$FFUF_DIR" "$KATANA_DIR" "$NUCLEI_DIR"
+
+
+# Functions
+
+run_subdomains() {
+    echo -e "${BLUE}[*] Enumerating subdomains...${NC}"
+
+    subfinder -d "$TARGET" -silent > "$SUB_DIR/subfinder.txt"
+    assetfinder --subs-only "$TARGET" > "$SUB_DIR/assetfinder.txt"
+    amass enum -passive -d "$TARGET" > "$SUB_DIR/amass.txt"
+
+    cat "$SUB_DIR"/*.txt | sort -u > "$SUB_DIR/all.txt"
 }
 
-# --- Subdomains  ---
-run_subs() {
-    echo -e "${BLUE}[*] Looking for Subdomains...${NC}"
-    subfinder -d "$TARGET" > "$REPORT_DIR/all_subs.txt"
-    assetfinder --subs-only "$TARGET" >> "$REPORT_DIR/all_subs.txt"
-    sort -u "$REPORT_DIR/all_subs.txt" -o "$REPORT_DIR/all_subs.txt"
-
-    echo -e "${BLUE}[*] Looking for alive hosts (Httpx)...${NC}"
-    # It can say "no -s", but you don't mind it, it still works (Hope so)
-    cat "$REPORT_DIR/all_subs.txt" | httpx -silent -status-code -title -o "$REPORT_DIR/alive.txt"
+run_dns() {
+    echo -e "${BLUE}[*] Running DNS enumeration (dnslister)...${NC}"
+    dnslister -d "$TARGET" -o "$DNS_DIR/dnslister.txt"
 }
 
-# --- Files ---
-run_deep() {
-    echo -e "${BLUE}[*] Looking for files in archives (GAU)...${NC}"
-    # Warnings are being sent to /dev/null
-    gau --subs "$TARGET" 2>/dev/null | grep -E "\.(sql|log|bak|conf|env|zip|tar.gz)" > "$REPORT_DIR/files.txt"
-
-    echo -e "${BLUE}[*] Katana (Crawler)...${NC}"
-    katana -u "https://$TARGET" -silent -o "$REPORT_DIR/katana.txt"
-    
-    echo -e "${BLUE}[*] Nuclei Check...${NC}"
-    nuclei -u "https://$TARGET" -severity low,medium,high,critical -silent -o "$REPORT_DIR/nuclei.txt"
+run_alive() {
+    echo -e "${BLUE}[*] Checking alive hosts...${NC}"
+    httpx -silent -l "$SUB_DIR/all.txt" > "$ALIVE_DIR/alive.txt"
 }
 
-case $MODE in
-    1) run_basic ;;
-    2) run_basic; run_subs ;;
-    3) run_basic; run_subs; run_deep ;;
+run_katana() {
+    echo -e "${BLUE}[*] Crawling URLs (katana)...${NC}"
+    katana -silent -list "$ALIVE_DIR/alive.txt" > "$KATANA_DIR/urls.txt"
+}
+
+run_nuclei() {
+    echo -e "${BLUE}[*] Running vulnerability scan (nuclei)...${NC}"
+    nuclei -l "$ALIVE_DIR/alive.txt" -o "$NUCLEI_DIR/results.txt"
+}
+
+choose_ffuf_rate() {
+    echo
+    echo -e "${CYAN}Choose ffuf request rate:${NC}"
+    echo "1) Stealth (5 req/s)"
+    echo "2) Normal (10 req/s) [Recommended]"
+    echo "3) Aggressive (30 req/s)"
+    echo "4) Custom"
+    read -rp "Select option [1-4]: " RATE_CHOICE
+
+    case "$RATE_CHOICE" in
+        1) FFUF_RATE=5 ;;
+        2) FFUF_RATE=10 ;;
+        3) FFUF_RATE=30 ;;
+        4)
+            read -rp "Enter custom rate (req/s): " FFUF_RATE
+            ;;
+        *)
+            echo -e "${YELLOW}[!] Invalid choice, defaulting to 10${NC}"
+            FFUF_RATE=10
+            ;;
+    esac
+
+    if [[ "$FFUF_RATE" -gt 30 ]]; then
+        echo -e "${RED}[!] WARNING: High ffuf rate selected!${NC}"
+        echo -e "${RED}[!] Use only with explicit authorization.${NC}"
+        sleep 2
+    fi
+}
+
+run_ffuf() {
+    choose_ffuf_rate
+
+    WORDLIST="/usr/share/wordlists/dirb/common.txt"
+
+    echo -e "${BLUE}[*] Running ffuf directory fuzzing...${NC}"
+    echo -e "${GREEN}[+] Rate: $FFUF_RATE req/s${NC}"
+
+    ffuf -u "https://$TARGET/FUZZ" \
+         -w "$WORDLIST" \
+         -rate "$FFUF_RATE" \
+         -mc 200,204,301,302,307,401,403 \
+         -o "$FFUF_DIR/dirs.json"
+
+    echo -e "${YELLOW}[!] ffuf generates high traffic. Ensure authorization.${NC}"
+}
+
+
+# Execution Logic
+
+case "$MODE" in
+    1)
+        run_subdomains
+        ;;
+    2)
+        run_subdomains
+        run_alive
+        ;;
+    3)
+        run_subdomains
+        run_dns
+        run_alive
+        run_katana
+        run_ffuf
+        run_nuclei
+        ;;
+    *)
+        echo -e "${RED}[!] Invalid mode selected${NC}"
+        exit 1
+        ;;
 esac
 
-echo -e "\n${GREEN}[+] Done! The results are in $REPORT_DIR${NC} folder!"
+
+# Done
+
+echo
+echo -e "${GREEN}[✓] Scan completed successfully${NC}"
+echo -e "${GREEN}[✓] Results saved in: $BASE_DIR${NC}"
