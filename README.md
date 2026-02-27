@@ -12,7 +12,7 @@ popular security and OSINT tools.
 - URL crawling
 - Vulnerability scanning
 - Directory fuzzing
-- **Configurable ffuf rate **
+**Configurable ffuf rate **
 - Organized output per target
 - Colored terminal output
 - Single-file Bash framework
