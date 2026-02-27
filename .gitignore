@@ -1,22 +1,13 @@
-# OSINT output
 results/
 output/
 scans/
 *.txt
 *.log
-
-# Temporary files
 *.tmp
 *.swp
 *.bak
-
-# OS-specific
 .DS_Store
 Thumbs.db
-
-# Editor / IDE
 .vscode/
 .idea/
-
-# Shell noise
 *.history
