@@ -4,7 +4,7 @@ set -euo pipefail
 
 # Metadata
 
-VERSION="1.2.1"
+VERSION="1.2.2"
 AUTHOR="CastielJ"
 
 # Colors
@@ -100,21 +100,6 @@ run_dns() {
          -o "$DNS_DIR/dnsx.txt"
 }
 
-run_alive() {
-        echo -e "${BLUE}[*] Checking alive web services (httpx)...${NC}"
-
-    httpx -l "$SUB_DIR/all.txt" \
-          -silent \
-          -follow-redirects \
-          -timeout 5 \
-          -retries 2 \
-          -threads 50 \
-          -title \
-          -status-code \
-          -tech-detect \
-          -o "$ALIVE_DIR/alive.txt"
-}
-
 run_katana() {
     echo -e "${BLUE}[*] Crawling URLs (katana)...${NC}"
     katana -silent -list "$ALIVE_DIR/alive.txt" > "$KATANA_DIR/urls.txt"
@@ -196,6 +181,20 @@ case "$MODE" in
         ;;
 esac
 
+run_alive() {
+        echo -e "${BLUE}[*] Checking alive web services (httpx)...${NC}"
+
+    httpx -l "$SUB_DIR/all.txt" \
+          -silent \
+          -follow-redirects \
+          -timeout 5 \
+          -retries 2 \
+          -threads 50 \
+          -title \
+          -status-code \
+          -tech-detect \
+          -o "$ALIVE_DIR/alive.txt"
+}
 
 # Done
 
