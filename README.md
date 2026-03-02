@@ -1,4 +1,4 @@
-# OSINT Framework (v.1.2.1)
+# OSINT Framework (v.2.1.0)
 
 An automated OSINT (Open Source Intelligence) framework written in Bash.
 This script helps gather reconnaissance data on a target domain using
@@ -16,6 +16,20 @@ popular security and OSINT tools.
 - Organized output per target
 - Colored terminal output
 - Single-file Bash framework
+- Auto-detects missing tools
+- Prompts to install them
+- Auto-installs Go if needed
+- Go-based tools are updated automatically on each run
+- Script warns if not run as root
+- Still works without root (with limitations)
+- Interactive and non-interactive (`--yes`) execution modes
+- Organized output structure per target
+- Rate-limited fuzzing with user-selected aggressiveness
+
+## Supported package managers
+
+- apt
+- pacman
 
 ## Tools Used
 
@@ -34,14 +48,18 @@ This script relies on external tools, including:
 
 ## Installation
 
+### Requirements
+- Bash 4+
+- One of the following package managers:
+  - `apt` (Debian/Ubuntu/Kali)
+  - `pacman` (Arch-based)
+- Internet connection
+
+### Clone
 ```bash
 git clone https://github.com/CastielJ/osint-framework.git
 cd osint-framework
 chmod +x script.sh
-```
-## Usage
-```bash
-./script.sh
 ```
 ##You will be prompted to:
 
@@ -56,6 +74,13 @@ Results will be saved in a folder named after the target.
 | **Basic**      | Subdomain enumeration only    |
 | **Subdomains** | Subdomains + alive host check |
 | **Deep**       | Full reconnaissance workflow  |
+
+
+## Command-Line Options
+
+| Option   | Description |
+|--------|-------------|
+| `--yes` | Non-interactive mode. Automatically accepts all installation prompts and continues execution. Useful for CI, VPS, and automation. |
 
 
 ## Example
@@ -104,6 +129,8 @@ This tool is for educational and authorized security testing only.
 
 You are responsible for ensuring you have permission to scan the target.
 The author is **not responsible** for misuse.
+
+Future improvements awaiting
 
 ## License
 This project is licensed under the MIT License.
