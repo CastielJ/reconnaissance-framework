@@ -2,12 +2,16 @@
 
 set -euo pipefail
 
+# =========================
 # Metadata
+# =========================
 
-VERSION="1.2.1"
+VERSION="2.1.0"
 AUTHOR="CastielJ"
 
+# =========================
 # Colors
+# =========================
 
 RED="\033[0;31m"
 GREEN="\033[0;32m"
@@ -16,7 +20,36 @@ BLUE="\033[0;34m"
 CYAN="\033[0;36m"
 NC="\033[0m"
 
+# =========================
+# Arguments
+# =========================
+
+AUTO_YES=false
+if [[ "${1:-}" == "--yes" ]]; then
+    AUTO_YES=true
+fi
+
+# =========================
+# Root Check
+# =========================
+
+check_root() {
+    if [[ "$EUID" -ne 0 ]]; then
+        echo -e "${YELLOW}[!] Not running as root${NC}"
+        echo -e "${YELLOW}[!] Some installs may fail${NC}"
+
+        if ! $AUTO_YES; then
+            read -rp "Continue anyway? [y/N]: " choice
+            [[ "$choice" =~ ^[Yy]$ ]] || exit 1
+        fi
+    fi
+}
+
+check_root
+
+# =========================
 # Banner
+# =========================
 
 echo -e "${CYAN}"
 echo "====================================="
@@ -25,14 +58,9 @@ echo " Author: $AUTHOR"
 echo "====================================="
 echo -e "${NC}"
 
-# Dependency Check
-
-check_tool() {
-    command -v "$1" >/dev/null 2>&1 || {
-        echo -e "${RED}[!] Missing dependency: $1${NC}"
-        exit 1
-    }
-}
+# =========================
+# Dependencies
+# =========================
 
 TOOLS=(
     subfinder
@@ -45,12 +73,126 @@ TOOLS=(
     ffuf
 )
 
+GO_TOOLS=(
+    subfinder
+    assetfinder
+    httpx
+    katana
+    nuclei
+    dnsx
+)
+
+MISSING_TOOLS=()
+
+check_tool() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        MISSING_TOOLS+=("$1")
+    fi
+}
+
 for tool in "${TOOLS[@]}"; do
     check_tool "$tool"
 done
 
+# =========================
+# Go Handling
+# =========================
 
+needs_go=false
+for tool in "${MISSING_TOOLS[@]}"; do
+    if [[ " ${GO_TOOLS[*]} " == *" $tool "* ]]; then
+        needs_go=true
+        break
+    fi
+done
+
+install_go() {
+    echo -e "${BLUE}[*] Installing Go...${NC}"
+
+    if command -v apt >/dev/null 2>&1; then
+        apt update
+        apt install -y golang
+    elif command -v pacman >/dev/null 2>&1; then
+        pacman -Sy --noconfirm go
+    else
+        echo -e "${RED}[!] Unsupported package manager. Install Go manually.${NC}"
+        exit 1
+    fi
+}
+
+export PATH="$PATH:$HOME/go/bin"
+
+install_go_tool() {
+    local tool="$1"
+    echo -e "${GREEN}[+] Installing/Updating $tool${NC}"
+
+    case "$tool" in
+        subfinder) go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest ;;
+        assetfinder) go install github.com/tomnomnom/assetfinder@latest ;;
+        httpx) go install github.com/projectdiscovery/httpx/cmd/httpx@latest ;;
+        katana) go install github.com/projectdiscovery/katana/cmd/katana@latest ;;
+        nuclei) go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest ;;
+        dnsx) go install github.com/projectdiscovery/dnsx/cmd/dnsx@latest ;;
+        *)
+            echo -e "${YELLOW}[!] No Go install rule for $tool${NC}"
+            ;;
+    esac
+}
+
+# =========================
+# Install / Update Missing Tools
+# =========================
+
+if [[ "${#MISSING_TOOLS[@]}" -gt 0 ]]; then
+    echo -e "${RED}[!] Missing tools:${NC}"
+    printf ' - %s\n' "${MISSING_TOOLS[@]}"
+    echo
+
+    if $AUTO_YES; then
+        install_choice="y"
+    else
+        read -rp "Install missing tools now? [y/N]: " install_choice
+    fi
+
+    if [[ "$install_choice" =~ ^[Yy]$ ]]; then
+
+        if $needs_go && ! command -v go >/dev/null 2>&1; then
+            if $AUTO_YES; then
+                go_choice="y"
+            else
+                read -rp "Go is required. Install Go? [y/N]: " go_choice
+            fi
+
+            [[ "$go_choice" =~ ^[Yy]$ ]] && install_go
+        fi
+
+        for tool in "${MISSING_TOOLS[@]}"; do
+            if [[ " ${GO_TOOLS[*]} " == *" $tool "* ]]; then
+                install_go_tool "$tool"
+            else
+                echo -e "${YELLOW}[!] $tool must be installed manually${NC}"
+            fi
+        done
+    else
+        echo -e "${RED}[!] Cannot continue without required tools${NC}"
+        exit 1
+    fi
+fi
+
+# =========================
+# Auto Update Existing Go Tools
+# =========================
+
+echo -e "${BLUE}[*] Auto-updating installed Go tools...${NC}"
+for tool in "${GO_TOOLS[@]}"; do
+    if command -v "$tool" >/dev/null 2>&1; then
+        install_go_tool "$tool"
+    fi
+done
+
+# =========================
 # User Input
+# =========================
 
 read -rp "Enter target domain (example.com): " TARGET
 
@@ -66,8 +208,9 @@ echo "2) Subdomains"
 echo "3) Deep (Recommended)"
 read -rp "Select option [1-3]: " MODE
 
-
+# =========================
 # Output Structure
+# =========================
 
 BASE_DIR="$TARGET"
 SUB_DIR="$BASE_DIR/subdomains"
@@ -79,8 +222,9 @@ NUCLEI_DIR="$BASE_DIR/nuclei"
 
 mkdir -p "$SUB_DIR" "$DNS_DIR" "$ALIVE_DIR" "$FFUF_DIR" "$KATANA_DIR" "$NUCLEI_DIR"
 
-
+# =========================
 # Functions
+# =========================
 
 run_subdomains() {
     echo -e "${BLUE}[*] Enumerating subdomains...${NC}"
@@ -93,7 +237,7 @@ run_subdomains() {
 }
 
 run_dns() {
-        echo -e "${BLUE}[*] Running DNS resolution (dnsx)...${NC}"
+    echo -e "${BLUE}[*] Running DNS resolution (dnsx)...${NC}"
 
     dnsx -l "$SUB_DIR/all.txt" \
          -a -resp \
@@ -157,10 +301,9 @@ run_ffuf() {
 }
 
 run_alive() {
-        echo -e "${BLUE}[*] Checking alive web services (httpx)...${NC}"
+    echo -e "${BLUE}[*] Checking alive web services (httpx)...${NC}"
 
-    httpx -l "$SUB_DIR/all.txt" \
-          -silent \
+    httpx -list "$SUB_DIR/all.txt" \
           -follow-redirects \
           -timeout 5 \
           -retries 2 \
@@ -171,7 +314,9 @@ run_alive() {
           -o "$ALIVE_DIR/alive.txt"
 }
 
+# =========================
 # Execution Logic
+# =========================
 
 case "$MODE" in
     1)
@@ -184,10 +329,10 @@ case "$MODE" in
     3)
         run_subdomains
         run_dns
-        run_alive
         run_katana
         run_ffuf
         run_nuclei
+        run_alive
         ;;
     *)
         echo -e "${RED}[!] Invalid mode selected${NC}"
@@ -195,8 +340,9 @@ case "$MODE" in
         ;;
 esac
 
-
+# =========================
 # Done
+# =========================
 
 echo
 echo -e "${GREEN}[✓] Scan completed successfully${NC}"
