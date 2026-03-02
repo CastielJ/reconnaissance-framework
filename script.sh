@@ -53,7 +53,7 @@ check_root
 
 echo -e "${CYAN}"
 echo "====================================="
-echo " OSINT Framework v$VERSION"
+echo " Reconnaissance Framework v$VERSION"
 echo " Author: $AUTHOR"
 echo "====================================="
 echo -e "${NC}"
