@@ -61,7 +61,7 @@ git clone https://github.com/CastielJ/osint-framework.git
 cd osint-framework
 chmod +x script.sh
 ```
-##You will be prompted to:
+## You will be prompted to:
 
 1. Enter a target domain or URL
 2. Choose a scan mode
