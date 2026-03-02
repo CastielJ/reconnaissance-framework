@@ -57,7 +57,7 @@ This script relies on external tools, including:
 
 ### Clone
 ```bash
-git clone https://github.com/CastielJ/osint-framework.git
+git clone https://github.com/CastielJ/reconnaissance-framework.git
 cd osint-framework
 chmod +x script.sh
 ```
