@@ -1,7 +1,7 @@
 # Reconnaissance Framework (v.2.1.0)
 
 An automated reconnaissance framework written in Bash.
-This script helps gather reconnaissance data on a target domain using
+This script helps gather data on a target domain using
 popular security and reconnaissance tools.
 
 ## Features
