@@ -1,8 +1,8 @@
-# OSINT Framework (v.2.1.0)
+# Reconnaissance Framework (v.2.1.0)
 
-An automated OSINT (Open Source Intelligence) framework written in Bash.
+An automated reconnaissance framework written in Bash.
 This script helps gather reconnaissance data on a target domain using
-popular security and OSINT tools.
+popular security and reconnaissance tools.
 
 ## Features
 
